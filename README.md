@@ -31,7 +31,7 @@ Docker Componse com as imagens do MongoDB e Express para uso em outras aplicaç�
 ### Usuário MongoDB
  - root/root
 
-## URL o Express Gerenciador do MongoDB:
+## URL para Express Gerenciador do MongoDB:
  - ```http://localhost:8081/```
 
 ### Usuário Express
