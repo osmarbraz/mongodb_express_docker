@@ -1,0 +1,134 @@
+# Define os serviços (containers) da aplicação.
+services:
+
+  # ============================================================
+  # SERVIÇO DO BANCO DE DADOS MONGODB
+  # ============================================================
+
+  # Nome do serviço MongoDB.
+  # Outros containers da rede poderão acessar o banco
+  # utilizando o hostname "mongo".
+  mongo:
+
+    # Imagem oficial do MongoDB na versão 9.0.4.
+    image: mongo:9.0.4
+
+    # Nome do container.
+    container_name: mongo
+
+    # Reinicia automaticamente, exceto quando parado manualmente.
+    restart: unless-stopped
+
+    # Variáveis utilizadas na inicialização do MongoDB.
+    environment:
+
+      # Cria o usuário administrador do banco.
+      MONGO_INITDB_ROOT_USERNAME: root
+
+      # Define a senha do usuário administrador.
+      # Altere esta senha antes de utilizar em produção.
+      MONGO_INITDB_ROOT_PASSWORD: "root"
+
+    # Mapeamento de portas:
+    # Porta 27017 do computador -> porta 27017 do container.
+    ports:
+      - "27017:27017"
+
+    # Verifica se o MongoDB está respondendo.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\" | grep -q 1"
+        ]
+
+      # Intervalo entre as verificações.
+      interval: 10s
+
+      # Tempo máximo para cada verificação.
+      timeout: 5s
+
+      # Quantidade de falhas consecutivas permitidas.
+      retries: 5
+
+      # Tempo de tolerância para inicialização.
+      start_period: 30s
+
+    # Armazena os dados em um volume persistente.
+    volumes:
+      - mongo_data:/data/db
+
+    # Conecta o MongoDB à rede da aplicação.
+    networks:
+      - rede_cliente
+
+  # ============================================================
+  # SERVIÇO DO MONGO EXPRESS
+  # ============================================================
+
+  # Interface web para administrar o MongoDB.
+  mongo-express:
+
+    # Imagem do Mongo Express.
+    image: mongo-express:1.0.2
+
+    # Nome do container.
+    container_name: mongo-express
+
+    # Reinicia automaticamente, exceto quando parado manualmente.
+    restart: unless-stopped
+
+    # Aguarda o MongoDB estar saudável antes de iniciar.
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+    # Mapeamento de portas:
+    # Porta 8081 do computador -> porta 8081 do container.
+    ports:
+      - "8081:8081"
+
+    # Variáveis de configuração do Mongo Express.
+    environment:
+
+      # Ativa a autenticação da interface web.
+      ME_CONFIG_BASICAUTH_ENABLED: "true"
+
+      # Usuário para acessar a interface web.
+      ME_CONFIG_BASICAUTH_USERNAME: "admin"
+
+      # Senha para acessar a interface web.
+      # Altere esta senha antes de utilizar em produção.
+      ME_CONFIG_BASICAUTH_PASSWORD: "admin"
+
+      # Endereço de conexão com o MongoDB.
+      # O hostname "mongo" corresponde ao serviço acima.
+      # authSource=admin indica onde está o usuário root.
+      ME_CONFIG_MONGODB_URL: "mongodb://root:root@mongo:27017/?authSource=admin"
+
+    # Conecta a interface à mesma rede do banco.
+    networks:
+      - rede_cliente
+
+# ==============================================================
+# VOLUMES
+# ==============================================================
+
+# Declara os volumes persistentes utilizados pelos serviços.
+volumes:
+
+  # Mantém os dados do MongoDB mesmo se o container for removido.
+  mongo_data:
+
+# ==============================================================
+# REDES
+# ==============================================================
+
+# Declara as redes utilizadas pelos containers.
+networks:
+
+  # Rede compartilhada entre o MongoDB e o Mongo Express.
+  rede_cliente:
+
+    # Permite a comunicação entre containers da mesma rede.
+    driver: bridge
